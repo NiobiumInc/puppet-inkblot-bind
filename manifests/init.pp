@@ -28,7 +28,10 @@ class bind (
         group   => $::bind::defaults::bind_group,
         mode    => '0644',
         require => Package['bind'],
-        notify  => Service['bind'],
+        # NIOBIUM (it#247): config files refresh the validate gate below, and
+        # only the gate refreshes the service. Upstream notified the service
+        # directly, so an invalid render restarted named into a failure.
+        notify  => Exec['bind-validate-config'],
     }
 
     include ::bind::updater
@@ -41,6 +44,32 @@ class bind (
     if $chroot and $::bind::defaults::chroot_class {
         # When using a dedicated chroot class, service declaration is dedicated to this class
         class { $::bind::defaults::chroot_class : }
+    }
+
+    # NIOBIUM (it#247): validate the WHOLE rendered configuration before the
+    # service is refreshed. Every managed config file (File defaults above,
+    # the concat targets below, bind::key's key files, bind::zone's per-zone
+    # conf) notifies this Exec instead of Service['bind']; the Exec notifies
+    # the service. When named-checkconf fails, Puppet reports the Exec failed
+    # and SKIPS the dependent service refresh, so named keeps serving its
+    # in-memory config -- the restart is blocked, not the write. named-checkconf
+    # follows the include directives in named.conf and names the offending
+    # file and line, which is why the gate runs on named.conf and not as a
+    # validate_cmd on the fragments (they reference ACLs and keys defined in
+    # other includes and are never valid on their own -- measured, it#247).
+    # named-checkconf ships in the bind package. With a chroot, named resolves
+    # its includes inside it, so the check must too (-t).
+    $checkconf_cmd = ($chroot and $chroot_dir) ? {
+        true    => "named-checkconf -t ${chroot_dir} ${::bind::defaults::namedconf}",
+        default => "named-checkconf ${::bind::defaults::namedconf}",
+    }
+    exec { 'bind-validate-config':
+        command     => $checkconf_cmd,
+        path        => '/usr/sbin:/usr/bin:/sbin:/bin',
+        refreshonly => true,
+        logoutput   => on_failure,
+        require     => Package['bind'],
+        notify      => Service['bind'],
     }
 
     if $dnssec {
@@ -103,7 +132,7 @@ class bind (
         mode    => '0644',
         warn    => true,
         require => Package['bind'],
-        notify  => Service['bind'],
+        notify  => Exec['bind-validate-config'],   # NIOBIUM (it#247): via the gate
     }
 
     concat::fragment { 'bind-logging-header':

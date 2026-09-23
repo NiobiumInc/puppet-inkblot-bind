@@ -41,7 +41,8 @@ define bind::key (
     }
 
     if $include and defined(Class['bind']) {
-        Package['bind'] -> File["${keydir}/${key_file_name}"] ~> Service['bind']
+        # NIOBIUM (it#247): through the validate gate, not straight to the service
+        Package['bind'] -> File["${keydir}/${key_file_name}"] ~> Exec['bind-validate-config']
 
         concat::fragment { "bind-key-${name}":
             order   => '10',

@@ -155,7 +155,7 @@ define bind::zone (
         group   => $bind_group,
         mode    => '0644',
         content => template('bind/zone.conf.erb'),
-        notify  => Service['bind'],
+        notify  => Exec['bind-validate-config'],   # NIOBIUM (it#247): via the gate
         require => Package['bind'],
     }
 
