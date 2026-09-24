@@ -59,6 +59,15 @@ class bind (
     # other includes and are never valid on their own -- measured, it#247).
     # named-checkconf ships in the bind package. With a chroot, named resolves
     # its includes inside it, so the check must too (-t).
+    # A chroot with no chroot_dir would make the selector below fall to the
+    # host-side command and validate the wrong tree -- precisely in the case
+    # -t exists for. On RHEL the module's own data leaves chroot_dir unset
+    # ("# XXX bind::defaults::chroot_dir" in data/os/RedHat.yaml), so this is
+    # the shape a future chroot enablement would hit. Refuse rather than
+    # check the wrong thing (!204 review).
+    if $chroot and !$chroot_dir {
+        fail('bind: chroot is enabled but chroot_dir is unset; named-checkconf would validate the host config instead of the chroot (NiobiumInc/it#247)')
+    }
     $checkconf_cmd = ($chroot and $chroot_dir) ? {
         true    => "named-checkconf -t ${chroot_dir} ${::bind::defaults::namedconf}",
         default => "named-checkconf ${::bind::defaults::namedconf}",

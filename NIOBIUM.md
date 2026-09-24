@@ -19,6 +19,16 @@ when chrooted, `refreshonly`) and points every config notify at it: the `File` d
 notifies the service. When the check fails, Puppet reports the Exec as failed and skips the
 dependent service refresh, so named keeps serving its in-memory configuration.
 
+**Chroot.** With `$chroot` and `$chroot_dir` set the check runs as `named-checkconf -t <chroot_dir>`.
+With `$chroot` set and `$chroot_dir` unset the class **fails** rather than silently validating the
+host's view of the config -- and that is the shape RHEL data ships (`data/os/RedHat.yaml` leaves
+`chroot_dir` commented out). Chroot is unreachable on the Niobium nameservers today
+(`chroot_supported: false` on el8/el9, and `profile::inkblot_bind` passes no `chroot`), so the `-t`
+branch has never executed here; whoever enables chroot owns setting `chroot_dir` and re-proving the
+gate. **Zone data** is not covered either: `bind::zone`'s data file keeps its own `rndc reload`
+(`named-checkconf` does not read zone files; `named-checkzone` does), so a malformed record fails at
+reload and that zone keeps serving its previous copy.
+
 **What it does not do.** The gate blocks the *restart*, not the *write*: the invalid file is on
 disk and a later restart from outside Puppet (an OS upgrade's package transaction, a reboot)
 would still fail. `validate_cmd` on the fragments cannot close that gap -- they `include`
@@ -40,3 +50,5 @@ NIOBIUM.md, it#222). This module was never a Forge tarball here, so there is no
 
 - `upstream-2f08cdb` -- what production pinned before the fork
 - `7.4.0+nb.1` -- + the validate gate (it#247)
+- `7.4.0+nb.2` -- + `fail()` when chroot is enabled without chroot_dir; NIOBIUM.md states the chroot and
+  zone-data limits (!204 review). Gate behaviour on a non-chroot host unchanged.
