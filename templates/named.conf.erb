@@ -28,13 +28,15 @@ options {
 <%- end -%>
 	auth-nxdomain <%= @auth_nxdomain ? 'yes' : 'no' %>;
 	listen-on-v6 { any; };
-	dnssec-enable <%= @dnssec ? 'yes' : 'no' %>;
+<%# NIOBIUM (it#103): no dnssec-enable -- obsolete in BIND 9.16 (ignored, warns), removed in 9.18
+    (a hard error); on 9.11 its default is yes, which is what this fleet rendered. -%>
 <%- if @filter_ipv6 -%>
 	filter-aaaa-on-v4 yes;
 <%- end -%>
 <%- if @dnssec -%>
 	dnssec-validation yes;
-	dnssec-lookaside auto;
+<%# NIOBIUM (it#103): no dnssec-lookaside -- ISC's DLV registry was shut down in 2017; 9.11
+    warns "'auto' is no longer supported", 9.16 "obsolete", 9.18 rejects it. -%>
 <%-   if @isc_bind_keys -%>
         bindkeys-file "<%= @isc_bind_keys %>";
 <%-   end -%>
