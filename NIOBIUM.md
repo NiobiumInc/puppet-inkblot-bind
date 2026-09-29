@@ -38,6 +38,32 @@ valid on their own (measured on `views.conf`: `undefined ACL 'niobium'`, `unknow
 reports the right file and line. Warnings (the it#103 obsolete directives) are not errors:
 `named-checkconf` exits 0 on the fleet's config today, so the gate lands without a flag day.
 
+### nb.3 — drop two directives current BIND no longer accepts (NiobiumInc/it#103)
+
+The options template rendered `dnssec-enable` (always) and `dnssec-lookaside auto` (with
+`$dnssec`). Both are dead on the fleet's newer servers and fatal on the next BIND:
+
+| directive | BIND 9.11.36 (el8: carbonite, smellerbee) | BIND 9.16.23 (el9: jet, longshot, pipsqueak, theduke) | BIND 9.18 |
+|---|---|---|---|
+| `dnssec-enable yes` | valid; `yes` **is the default** | "obsolete and should be removed" -- ignored | removed: `named` refuses to start |
+| `dnssec-lookaside auto` | "'auto' is no longer supported" (ISC's DLV registry shut down in 2017) | "obsolete" -- ignored | removed |
+
+Measured with `named-checkconf` on all six servers, 2026-09-24 (it#247). Removing both is
+behaviour-neutral for this fleet: it renders `dnssec => true`, whose `dnssec-enable yes` is
+9.11's own default, and DLV has answered nothing since 2017. `dnssec-validation yes` stays.
+
+**One semantic change, outside this fleet:** with `dnssec => false` the template used to
+render `dnssec-enable no`; now it renders nothing, so on a 9.11 server DNSSEC *processing*
+stays at its default (on) and only validation is off. On 9.16+ the old line was ignored anyway.
+
+**Not in this patch:** `filter-aaaa-on-v4` (with `$filter_ipv6`). It is live policy on 9.11
+and ignored on 9.16+ (it moved to the `filter-aaaa.so` plugin in 9.13), and 9.18 rejects it
+in `options` -- so it must change too, but whether the fleet keeps the policy (plugin on
+9.16+) or retires it is joel's call on it#103, and it lands as nb.4.
+
+Rendered with the fleet's values before and after (Ruby ERB, trim mode `-`, as Puppet
+renders): exactly the two lines removed, no other byte of the options block changes.
+
 ## Versioning
 
 `metadata.json` `version` is `7.4.0+nb.N` (`+`, not `-`: a `-` suffix is a prerelease and
@@ -52,3 +78,5 @@ NIOBIUM.md, it#222). This module was never a Forge tarball here, so there is no
 - `7.4.0+nb.1` -- + the validate gate (it#247)
 - `7.4.0+nb.2` -- + `fail()` when chroot is enabled without chroot_dir; NIOBIUM.md states the chroot and
   zone-data limits (!204 review). Gate behaviour on a non-chroot host unchanged.
+- `7.4.0+nb.3` -- - `dnssec-enable` and `dnssec-lookaside auto` from the options template (it#103);
+  behaviour-neutral with `dnssec => true`.
