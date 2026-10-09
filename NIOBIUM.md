@@ -56,13 +56,30 @@ behaviour-neutral for this fleet: it renders `dnssec => true`, whose `dnssec-ena
 render `dnssec-enable no`; now it renders nothing, so on a 9.11 server DNSSEC *processing*
 stays at its default (on) and only validation is off. On 9.16+ the old line was ignored anyway.
 
-**Not in this patch:** `filter-aaaa-on-v4` (with `$filter_ipv6`). It is live policy on 9.11
-and ignored on 9.16+ (it moved to the `filter-aaaa.so` plugin in 9.13), and 9.18 rejects it
-in `options` -- so it must change too, but whether the fleet keeps the policy (plugin on
-9.16+) or retires it is joel's call on it#103, and it lands as nb.4.
+**Not in this patch:** `filter-aaaa-on-v4` (with `$filter_ipv6`) -- it is nb.4, below.
 
 Rendered with the fleet's values before and after (Ruby ERB, trim mode `-`, as Puppet
 renders): exactly the two lines removed, no other byte of the options block changes.
+
+### nb.4 — retire `filter-aaaa-on-v4` (NiobiumInc/it#103, option B)
+
+The third directive the 2021 template still emitted, `filter-aaaa-on-v4 yes` (with
+`$filter_ipv6`), is gone from the options template. `$filter_ipv6` stays as a class
+parameter so existing data keeps compiling, but nothing reads it any more.
+
+| directive | BIND 9.11.36 (el8: carbonite, smellerbee) | BIND 9.16.23 (el9: jet, longshot, pipsqueak, theduke) | BIND 9.18 |
+|---|---|---|---|
+| `filter-aaaa-on-v4 yes` | live: AAAA records are withheld from answers over IPv4 (recursion only; the zones carry no AAAA) | "obsolete and should be removed" -- ignored; the policy moved to the `filter-aaaa.so` plugin in 9.13 | removed from `options`: `named` refuses to start |
+
+Why retire rather than port to the plugin (joel, 2026-10-05, it#103): AAAA filtering is not a
+security control, the four 9.16 servers had silently stopped filtering months before anyone
+noticed, and jet (first in every resolver list) is one of them; IPv6 exposure is tracked as
+its own topic (it#25). **Behaviour change, on two servers only:** smellerbee and carbonite
+(9.11) stop withholding AAAA from recursive answers over IPv4 and come into line with the
+other four. Authoritative answers are unchanged (no AAAA in our zones).
+
+Rendered with the fleet's values before and after (Ruby ERB, trim mode `-`): exactly the one
+line removed with `$filter_ipv6 => true`; byte-identical with `false`.
 
 ## Versioning
 
@@ -80,3 +97,5 @@ NIOBIUM.md, it#222). This module was never a Forge tarball here, so there is no
   zone-data limits (!204 review). Gate behaviour on a non-chroot host unchanged.
 - `7.4.0+nb.3` -- - `dnssec-enable` and `dnssec-lookaside auto` from the options template (it#103);
   behaviour-neutral with `dnssec => true`.
+- `7.4.0+nb.4` -- - `filter-aaaa-on-v4` from the options template (it#103, option B); `$filter_ipv6`
+  accepted and ignored. smellerbee/carbonite stop filtering AAAA in recursive answers.

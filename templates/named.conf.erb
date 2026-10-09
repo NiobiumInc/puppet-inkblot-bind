@@ -30,9 +30,9 @@ options {
 	listen-on-v6 { any; };
 <%# NIOBIUM (it#103): no dnssec-enable -- obsolete in BIND 9.16 (ignored, warns), removed in 9.18
     (a hard error); on 9.11 its default is yes, which is what this fleet rendered. -%>
-<%- if @filter_ipv6 -%>
-	filter-aaaa-on-v4 yes;
-<%- end -%>
+<%# NIOBIUM (it#103, nb.4): no filter-aaaa-on-v4 -- live only on 9.11, ignored on 9.16+ (moved to
+    the filter-aaaa.so plugin in 9.13), rejected in options by 9.18. Retired as policy (joel,
+    2026-10-05): $filter_ipv6 is accepted and ignored. -%>
 <%- if @dnssec -%>
 	dnssec-validation yes;
 <%# NIOBIUM (it#103): no dnssec-lookaside -- ISC's DLV registry was shut down in 2017; 9.11
