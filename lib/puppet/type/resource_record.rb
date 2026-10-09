@@ -30,7 +30,8 @@ Puppet::Type.newtype(:resource_record) do
   newparam(:type) do
     desc 'The record type'
     isrequired
-    newvalues 'A', 'AAAA', 'CNAME', 'NS', 'MX', 'SPF', 'SRV', 'NAPTR', 'PTR', 'TXT', 'DS', 'TLSA', 'SSHFP'
+    # NIOBIUM (nb.5): + CAA. Data passes through raw; the value carries its own quotes.
+    newvalues 'A', 'AAAA', 'CNAME', 'NS', 'MX', 'SPF', 'SRV', 'NAPTR', 'PTR', 'TXT', 'DS', 'TLSA', 'SSHFP', 'CAA'
   end
 
   newparam(:record) do

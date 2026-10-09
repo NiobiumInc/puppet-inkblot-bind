@@ -81,6 +81,21 @@ other four. Authoritative answers are unchanged (no AAAA in our zones).
 Rendered with the fleet's values before and after (Ruby ERB, trim mode `-`): exactly the one
 line removed with `$filter_ipv6 => true`; byte-identical with `false`.
 
+### nb.5 — allow the CAA record type
+
+`resource_record`'s `type` parameter is an allowlist, and CAA (RFC 8659) was not on it, so a
+`bind::resource_record` hiera entry with `type: 'CAA'` failed the whole catalog on the
+nameservers. The nsupdate provider is type-generic; the allowlist was the only block.
+
+CAA is deliberately **not** added to the provider's quoted or escaped type lists. The value
+carries its own quotes, so hiera holds the whole rdata, e.g.
+`'0 issue "digicert.com; accounturi=https://digicert.com/account/<id>"'`, and nsupdate gets it
+verbatim. `dig` prints CAA rdata back in that same form, with the `;` inside the quotes left
+unescaped (checked against live records, e.g. cloudflare.com's
+`0 issue "digicert.com; cansignhttpexchanges=yes"`), so the provider's data comparison stays in
+sync and does not rewrite the record on every run. BIND has served CAA since 9.10.1, so every
+server in the fleet (9.11 and 9.16) accepts it.
+
 ## Versioning
 
 `metadata.json` `version` is `7.4.0+nb.N` (`+`, not `-`: a `-` suffix is a prerelease and
@@ -99,3 +114,4 @@ NIOBIUM.md, it#222). This module was never a Forge tarball here, so there is no
   behaviour-neutral with `dnssec => true`.
 - `7.4.0+nb.4` -- - `filter-aaaa-on-v4` from the options template (it#103, option B); `$filter_ipv6`
   accepted and ignored. smellerbee/carbonite stop filtering AAAA in recursive answers.
+- `7.4.0+nb.5` -- + `CAA` in `resource_record`'s type allowlist. No change for existing records.
