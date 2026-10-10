@@ -96,6 +96,15 @@ unescaped (checked against live records, e.g. cloudflare.com's
 sync and does not rewrite the record on every run. BIND has served CAA since 9.10.1, so every
 server in the fleet (9.11 and 9.16) accepts it.
 
+### nb.6 — no stdlib functions that stdlib 9 removed (NiobiumInc/it#360)
+
+The control repo is moving to puppetlabs-stdlib 9 so that the modules can run on Puppet/OpenVox 8.
+stdlib 9 removed the `is_*` and `validate_*` families (and others) without a replacement in Puppet
+core. This module called one of them: `is_bool($supported)` in `bind::defaults`, the guard that the
+OS data loaded. It is now `$supported =~ Boolean`, the same test (true only for a real Boolean), and
+it works on stdlib 6.5 and 9 alike, so the pin can move before the stdlib bump. No other call to a
+removed function remains in `manifests/` or `templates/`.
+
 ## Versioning
 
 `metadata.json` `version` is `7.4.0+nb.N` (`+`, not `-`: a `-` suffix is a prerelease and
@@ -115,3 +124,4 @@ NIOBIUM.md, it#222). This module was never a Forge tarball here, so there is no
 - `7.4.0+nb.4` -- - `filter-aaaa-on-v4` from the options template (it#103, option B); `$filter_ipv6`
   accepted and ignored. smellerbee/carbonite stop filtering AAAA in recursive answers.
 - `7.4.0+nb.5` -- + `CAA` in `resource_record`'s type allowlist. No change for existing records.
+- `7.4.0+nb.6` -- `is_bool()` -> `=~ Boolean` in `bind::defaults` for stdlib 9 (it#360). Same test; no catalog change.
