@@ -25,7 +25,9 @@ class bind::defaults (
     $chroot_class           = undef,
     $chroot_dir             = undef,
 ) {
-    unless is_bool($supported) {
+    # NIOBIUM (it#360): stdlib 9 removed is_bool(); `=~ Boolean` is the same
+    # test (true only for an actual true/false) and works on stdlib 6.5 too.
+    unless $supported =~ Boolean {
         fail('Please ensure that the dependencies of the bind module are installed and working correctly')
     }
     unless $supported {
